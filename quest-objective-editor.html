@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Quest & Objective Editor</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+
+body {
+  background: url('logo.jpg') no-repeat center center fixed;
+  background-size: cover;
+  background-blend-mode: multiply;
+  background-color: #0a0a0a;
+}
+
+    .half { width: 48%; display: inline-block; vertical-align: top; margin-right: 2%; }
+    .half:last-child { margin-right: 0; }
+    .field-group { margin-bottom: 10px; }
+    .field-group label { display: block; font-weight: bold; margin-bottom: 4px; }
+    .entry, .nested { background: #1e1e1e; padding: 12px; margin-bottom: 20px; border-radius: 6px; }
+    .nested { background: #2a2a2a; margin-left: 10px; }
+    textarea { width: 100%; min-height: 60px; }
+  </style>
+</head>
+<body>
+  <h1>Quest & Objective Editor</h1>
+  <div style="text-align:right;margin-bottom:10px;"><a href="index.html" class="home-button">⬅ Back to Home</a></div>
+<div class="editor-section">
+    <div class="half">
+      <h2>Quest File</h2>
+      <input type="file" id="questInput" accept=".json" />
+      <button onclick="downloadJSON('quest')">Download Quest JSON</button>
+      <div id="questContainer" class="entry"></div>
+    </div>
+    <div class="half">
+      <h2>Objective File</h2>
+      <input type="file" id="objectiveInput" accept=".json" />
+      <button onclick="downloadJSON('objective')">Download Objective JSON</button>
+      <div id="objectiveContainer" class="entry"></div>
+    </div>
+  </div>
+
+  <script>
+    let questConfig = {};
+    let objectiveConfig = {};
+    let questFilename = "";
+    let objectiveFilename = "";
+
+    document.getElementById("questInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      questFilename = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          questConfig = JSON.parse(e.target.result);
+          renderQuest();
+        } catch (err) {
+          alert("Invalid Quest JSON");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById("objectiveInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      objectiveFilename = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          objectiveConfig = JSON.parse(e.target.result);
+          renderObjective();
+        } catch (err) {
+          alert("Invalid Objective JSON");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function renderQuest() {
+      const container = document.getElementById("questContainer");
+      container.innerHTML = "";
+
+      const keys = ["Title", "ObjectiveText", "IsDailyQuest", "IsWeeklyQuest", "Repeatable", "CancelQuestOnPlayerDeath", "Autocomplete", "IsGroupQuest", "Active"];
+      keys.forEach(key => {
+        if (!(key in questConfig)) return;
+        const group = document.createElement("div");
+        group.className = "field-group";
+
+        const label = document.createElement("label");
+        label.textContent = key;
+
+        let input;
+        if (typeof questConfig[key] === "number" && (questConfig[key] === 0 || questConfig[key] === 1)) {
+          input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = questConfig[key] === 1;
+          input.onchange = () => { questConfig[key] = input.checked ? 1 : 0; };
+        } else {
+          input = document.createElement("input");
+          input.type = typeof questConfig[key] === "number" ? "number" : "text";
+          input.value = questConfig[key];
+          input.onchange = () => { questConfig[key] = input.type === "number" ? parseFloat(input.value) : input.value; };
+        }
+
+        group.appendChild(label);
+        group.appendChild(input);
+        container.appendChild(group);
+      });
+
+      if (Array.isArray(questConfig.Descriptions)) {
+        const desc = document.createElement("div");
+        desc.className = "field-group";
+        desc.innerHTML = "<label>Descriptions (one per line)</label>";
+        const ta = document.createElement("textarea");
+        ta.value = questConfig.Descriptions.join("\n");
+        ta.onchange = () => {
+          questConfig.Descriptions = ta.value.split("\n").map(l => l.trim()).filter(Boolean);
+        };
+        desc.appendChild(ta);
+        container.appendChild(desc);
+      }
+
+      if (Array.isArray(questConfig.Rewards)) {
+        const rewards = document.createElement("div");
+        rewards.className = "field-group";
+        rewards.innerHTML = "<label>Reward ClassNames (line-separated)</label>";
+        const ta = document.createElement("textarea");
+        ta.value = questConfig.Rewards.map(r => r.ClassName).join("\n");
+        ta.onchange = () => {
+          const lines = ta.value.split("\n").map(l => l.trim()).filter(Boolean);
+          questConfig.Rewards = lines.map(classname => ({
+            ClassName: classname, Amount: 1, Attachments: [], DamagePercent: 0, HealthPercent: 0, Chance: 1.0, QuestID: -1
+          }));
+        };
+        rewards.appendChild(ta);
+        container.appendChild(rewards);
+      }
+    }
+
+    function renderObjective() {
+      const container = document.getElementById("objectiveContainer");
+      container.innerHTML = "";
+
+      for (const [key, val] of Object.entries(objectiveConfig)) {
+        const group = document.createElement("div");
+        group.className = "field-group";
+
+        const label = document.createElement("label");
+        label.textContent = key;
+
+        let input;
+        if (typeof val === "boolean" || val === 0 || val === 1) {
+          input = document.createElement("input");
+          input.type = "checkbox";
+          input.checked = val === 1;
+          input.onchange = () => { objectiveConfig[key] = input.checked ? 1 : 0; };
+        } else if (typeof val === "number") {
+          input = document.createElement("input");
+          input.type = "number";
+          input.value = val;
+          input.onchange = () => { objectiveConfig[key] = parseFloat(input.value); };
+        } else if (typeof val === "string") {
+          input = document.createElement("input");
+          input.type = "text";
+          input.value = val;
+          input.onchange = () => { objectiveConfig[key] = input.value; };
+        } else if (Array.isArray(val)) {
+          input = document.createElement("textarea");
+          input.value = val.join("\n");
+          input.onchange = () => {
+            objectiveConfig[key] = input.value.split("\n").map(l => l.trim()).filter(Boolean);
+          };
+        }
+
+        group.appendChild(label);
+        group.appendChild(input);
+        container.appendChild(group);
+      }
+    }
+
+    function downloadJSON(type) {
+      const data = type === "quest" ? questConfig : objectiveConfig;
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = type === "quest" ? (questFilename || "Quest.json") : (objectiveFilename || "Objective.json");
+      a.click();
+    }
+  </script>
+</body>
+</html>

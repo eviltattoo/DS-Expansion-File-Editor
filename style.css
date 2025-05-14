@@ -1,0 +1,48 @@
+
+body {
+  background-color: #121212;
+  color: #f0f0f0;
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 20px;
+}
+h1, h2 {
+  text-align: center;
+  color: #fff;
+  text-shadow: 0 0 10px #ff0000;
+}
+button {
+  background: #900;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  margin: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 0 10px #f00;
+}
+button:hover {
+  background: #c00;
+}
+a {
+  color: #ff6666;
+  text-decoration: none;
+}
+.editor-section {
+  margin: 20px auto;
+  max-width: 900px;
+  background: #1e1e1e;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 0 10px #333;
+}
+input, select, textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  background: #2a2a2a;
+  color: white;
+  border: 1px solid #555;
+  border-radius: 6px;
+}

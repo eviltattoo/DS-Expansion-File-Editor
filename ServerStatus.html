@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Devils Society Server Info</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600&display=swap');
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: url('logo.jpg') no-repeat center center fixed;
+      background-size: cover;
+      background-blend-mode: multiply;
+      background-color: #0a0a0a;
+      color: white;
+      font-family: 'Orbitron', sans-serif;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      color: #66fcf1;
+      text-shadow: 0 0 12px #45a29e;
+    }
+
+    .server-logo {
+      max-width: 120px;
+      margin: 10px auto;
+      display: block;
+      filter: drop-shadow(0 0 8px red);
+      border-radius: 12px;
+    }
+
+    .panel-container {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 40px;
+      margin-top: 30px;
+      flex-wrap: wrap;
+    }
+
+    .panel-box {
+      background-color: rgba(0, 0, 0, 0.75);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(255, 0, 0, 0.3);
+      width: 320px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .panel-box:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 0 25px rgba(0, 255, 255, 0.4);
+    }
+
+    .server-name {
+      color: #ff4444;
+      font-size: 20px;
+      font-weight: bold;
+      text-shadow: 0 0 10px #ff4444;
+    }
+
+    .status-online {
+      color: #00ff88;
+      font-weight: bold;
+      text-shadow: 0 0 10px #00ff88;
+    }
+
+    .status-offline {
+      color: #ff0033;
+      font-weight: bold;
+      text-shadow: 0 0 10px #ff0033;
+    }
+
+    .join-button,
+    .discord-button {
+      display: inline-block;
+      margin-top: 15px;
+      padding: 12px 20px;
+      background-color: #1f2833;
+      border: 2px solid #66fcf1;
+      color: #66fcf1;
+      font-weight: bold;
+      text-decoration: none;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .join-button:hover,
+    .discord-button:hover {
+      background-color: #66fcf1;
+      color: #1f2833;
+      transform: scale(1.05);
+    }
+
+    ul.player-list {
+      list-style: none;
+      padding: 0;
+      margin-top: 10px;
+    }
+
+    ul.player-list li {
+      margin: 5px 0;
+      background: #1f2833;
+      padding: 5px 10px;
+      border-radius: 6px;
+      color: #66fcf1;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Logo -->
+  <img src="devil_logo.png" alt="Server Logo" style="
+  max-width: 200px;
+  margin: 20px auto;
+  display: block;
+  filter: drop-shadow(0 0 10px white);
+">
+
+  <!-- Title -->
+  <h1>Devils Society DayZ Server</h1>
+
+  <!-- Panel Section -->
+  <div class="panel-container">
+    <!-- Server Status Box -->
+    <div class="panel-box" id="statusBox">
+      Checking server status...
+    </div>
+
+    <!-- Discord Panel -->
+    <div class="panel-box">
+      <h2 style="color:white;">Join Our Discord</h2>
+      <p style="color:#aaa;">Get updates & support</p>
+      <a href="https://discord.gg/HNWqxtgVrJ" class="discord-button" target="_blank">Join Our Discord</a>
+    </div>
+  </div>
+
+  <!-- Server Connect Link and Back -->
+  <div style="margin-top:30px;">
+    <a href="steam://connect/167.160.93.162:2332" class="join-button">Click to Join Server</a>
+    <br><br>
+    <a href="index.html" style="color:#66fcf1;">← Back to Editor</a>
+  </div>
+
+  <!-- Server Status Script -->
+  <script>
+    async function checkServer() {
+      const statusBox = document.getElementById("statusBox");
+      try {
+        const response = await fetch("https://api.battlemetrics.com/servers/32675487?include=player");
+        const data = await response.json();
+        const server = data.data.attributes;
+        const playerData = data.included || [];
+
+        const statusClass = server.status === "online" ? "status-online" : "status-offline";
+        let playerListHTML = '';
+
+        if (playerData.length > 0) {
+          playerListHTML = '<h4 style="color:#66fcf1;">Online Players</h4><ul class="player-list">';
+          for (const p of playerData) {
+            playerListHTML += `<li>${p.attributes.name}</li>`;
+          }
+          playerListHTML += '</ul>';
+        } else {
+          playerListHTML = "<p style='color:#aaa;'>No players online.</p>";
+        }
+
+        statusBox.innerHTML = `
+          <div class="server-name">${server.name}</div>
+          Status: <span class="${statusClass}">${server.status}</span><br>
+          Players: ${server.players}/${server.maxPlayers}<br>
+          Map: ${server.details.map}<br>
+          Version: ${server.details.version}
+          ${playerListHTML}
+        `;
+      } catch (err) {
+        statusBox.innerHTML = "❌ Failed to retrieve server status.";
+      }
+    }
+
+    checkServer();
+  </script>
+</body>
+</html>

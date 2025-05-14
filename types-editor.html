@@ -1,0 +1,166 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Types.xml Editor</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+
+body {
+  background: url('logo.jpg') no-repeat center center fixed;
+  background-size: cover;
+  background-blend-mode: multiply;
+  background-color: #0a0a0a;
+}
+
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; color: white; }
+    th, td { border: 1px solid #444; padding: 6px; text-align: left; }
+    th { background-color: #222; }
+    tr:nth-child(even) { background-color: #1a1a1a; }
+    input[type=file], button { margin: 10px 0; }
+    td[contenteditable] { white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Types.xml Editor</h1>
+  <div style="text-align:right;margin-bottom:10px;"><a href="index.html" class="home-button">⬅ Back to Home</a></div>
+<div class="editor-section">
+    <input type="file" id="typesInput" accept=".xml">
+    <button onclick="downloadXML()" style="background:red;">Download Edited XML</button>
+    <table id="typesTable"></table>
+  </div>
+  <script>
+    const parser = new DOMParser();
+    const serializer = new XMLSerializer();
+    let xmlDoc;
+
+    document.getElementById("typesInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        xmlDoc = parser.parseFromString(e.target.result, "application/xml");
+        renderTable();
+      };
+      reader.readAsText(file);
+    });
+
+    function renderTable() {
+      const table = document.getElementById("typesTable");
+      table.innerHTML = `<tr>
+        <th>name</th><th>lifetime</th><th>restock</th><th>min</th><th>quantmin</th><th>quantmax</th><th>nominal</th>
+        <th>cost</th><th>flags</th><th>category</th><th>usage(s)</th><th>value(s)</th><th>tag(s)</th><th>Delete</th>
+      </tr>`;
+      const types = xmlDoc.getElementsByTagName("type");
+
+      for (let i = 0; i < types.length; i++) {
+        const type = types[i];
+        const name = type.getAttribute("name") || "";
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td contenteditable>${name}</td>
+          <td contenteditable>${getText(type, "lifetime")}</td>
+          <td contenteditable>${getText(type, "restock")}</td>
+          <td contenteditable>${getText(type, "min")}</td>
+          <td contenteditable>${getText(type, "quantmin")}</td>
+          <td contenteditable>${getText(type, "quantmax")}</td>
+          <td contenteditable>${getText(type, "nominal")}</td>
+          <td contenteditable>${getText(type, "cost")}</td>
+          <td contenteditable>${getText(type, "flags")}</td>
+          <td contenteditable>${getMulti(type, "category")}</td>
+          <td contenteditable>${getMultiAttr(type, "usage", "name")}</td>
+          <td contenteditable>${getMultiAttr(type, "value", "name")}</td>
+          <td contenteditable>${getMultiAttr(type, "tag", "name")}</td>
+          <td><button onclick="deleteRow(this)">x</button></td>
+        `;
+        table.appendChild(row);
+      }
+    }
+
+    function getText(parent, tag) {
+      const node = parent.getElementsByTagName(tag)[0];
+      return node ? node.textContent : "";
+    }
+
+    function getMulti(parent, tag) {
+      const node = parent.getElementsByTagName(tag)[0];
+      return node ? node.textContent : "";
+    }
+
+    function getMultiAttr(parent, tag, attr) {
+      const nodes = parent.getElementsByTagName(tag);
+      return Array.from(nodes).map(n => n.getAttribute(attr)).filter(Boolean).join(", ");
+    }
+
+    function deleteRow(button) {
+      const row = button.closest("tr");
+      row.remove();
+    }
+
+    function downloadXML() {
+      const table = document.getElementById("typesTable");
+      const rows = table.querySelectorAll("tr");
+      const types = xmlDoc.getElementsByTagName("type");
+
+      for (let i = 1; i < rows.length; i++) {
+        const cells = rows[i].querySelectorAll("td");
+        const type = types[i - 1];
+        if (!type) continue;
+
+        type.setAttribute("name", cells[0].innerText.trim());
+
+        updateTag(type, "lifetime", cells[1].innerText);
+        updateTag(type, "restock", cells[2].innerText);
+        updateTag(type, "min", cells[3].innerText);
+        updateTag(type, "quantmin", cells[4].innerText);
+        updateTag(type, "quantmax", cells[5].innerText);
+        updateTag(type, "nominal", cells[6].innerText);
+        updateTag(type, "cost", cells[7].innerText);
+        updateTag(type, "flags", cells[8].innerText);
+
+        replaceTags(type, "category", cells[9].innerText.split(/,\s*/));
+        replaceNamedTags(type, "usage", "name", cells[10].innerText.split(/,\s*/));
+        replaceNamedTags(type, "value", "name", cells[11].innerText.split(/,\s*/));
+        replaceNamedTags(type, "tag", "name", cells[12].innerText.split(/,\s*/));
+      }
+
+      const xmlString = serializer.serializeToString(xmlDoc);
+      const blob = new Blob([xmlString], { type: "text/xml" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "types.xml";
+      a.click();
+    }
+
+    function updateTag(parent, tag, value) {
+      let node = parent.getElementsByTagName(tag)[0];
+      if (!node && value.trim()) {
+        node = xmlDoc.createElement(tag);
+        parent.appendChild(node);
+      }
+      if (node) node.textContent = value.trim();
+    }
+
+    function replaceTags(parent, tag, values) {
+      Array.from(parent.getElementsByTagName(tag)).forEach(n => parent.removeChild(n));
+      values.filter(Boolean).forEach(val => {
+        const node = xmlDoc.createElement(tag);
+        node.textContent = val.trim();
+        parent.appendChild(node);
+      });
+    }
+
+    function replaceNamedTags(parent, tag, attr, values) {
+      Array.from(parent.getElementsByTagName(tag)).forEach(n => parent.removeChild(n));
+      values.filter(Boolean).forEach(val => {
+        const node = xmlDoc.createElement(tag);
+        node.setAttribute(attr, val.trim());
+        parent.appendChild(node);
+      });
+    }
+  </script>
+</body>
+</html>

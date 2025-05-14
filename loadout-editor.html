@@ -1,0 +1,127 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Loadout Editor</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+
+body {
+  background: url('logo.jpg') no-repeat center center fixed;
+  background-size: cover;
+  background-blend-mode: multiply;
+  background-color: #0a0a0a;
+}
+
+    .entry, .nested { background: #1e1e1e; padding: 12px; margin-bottom: 12px; border-radius: 6px; }
+    .nested { margin-left: 20px; background: #2a2a2a; }
+    .field-group { margin-bottom: 10px; }
+    .field-group label { display: block; font-weight: bold; margin-bottom: 4px; }
+    .collapsible { cursor: pointer; padding: 6px; background: #333; border-radius: 4px; margin-bottom: 5px; }
+    .collapsed { display: none; }
+    .btn { background: #333; color: white; padding: 4px 8px; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Loadout Editor</h1>
+  <div style="text-align:right;margin-bottom:10px;"><a href="index.html" class="home-button">⬅ Back to Home</a></div>
+<div class="editor-section">
+    <input type="file" id="loadoutInput" accept=".json" />
+    <button onclick="downloadJSON()">Download Edited Loadout</button>
+    <div id="loadoutContainer"></div>
+  </div>
+
+  <script>
+    let loadout = {};
+    let filename = "";
+
+    document.getElementById("loadoutInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      filename = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          loadout = JSON.parse(e.target.result);
+          renderLoadout(loadout, document.getElementById("loadoutContainer"));
+        } catch (err) {
+          alert("Invalid JSON format");
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function renderLoadout(data, container) {
+      container.innerHTML = "";
+      if (!Array.isArray(data)) {
+        container.innerHTML = "<p style='color:red;'>Expected an array of loadout items</p>";
+        return;
+      }
+
+      data.forEach((item, index) => {
+        const wrapper = document.createElement("div");
+        wrapper.className = "entry";
+        wrapper.innerHTML = `
+          <h3>Item ${index + 1}</h3>
+          <div class="field-group">
+            <label>ClassName</label>
+            <input type="text" value="${item.ClassName || ''}" onchange="loadout[${index}].ClassName = this.value">
+          </div>
+          <div class="field-group">
+            <label>Chance</label>
+            <input type="number" value="${item.Chance || 1}" onchange="loadout[${index}].Chance = parseFloat(this.value)">
+          </div>
+          <div class="field-group">
+            <label>Quantity</label>
+            <input type="number" value="${item.Quantity || 1}" onchange="loadout[${index}].Quantity = parseFloat(this.value)">
+          </div>
+        `;
+
+        if (item.Attachments && Array.isArray(item.Attachments)) {
+          const sub = document.createElement("div");
+          sub.className = "nested";
+          sub.innerHTML = `<strong>Attachments</strong>`;
+          renderLoadout(item.Attachments, sub);
+          wrapper.appendChild(sub);
+        }
+
+        if (item.InventoryAttachments && Array.isArray(item.InventoryAttachments)) {
+          const sub = document.createElement("div");
+          sub.className = "nested";
+          sub.innerHTML = `<strong>InventoryAttachments</strong>`;
+          renderLoadout(item.InventoryAttachments, sub);
+          wrapper.appendChild(sub);
+        }
+
+        if (item.InventoryCargo && Array.isArray(item.InventoryCargo)) {
+          const sub = document.createElement("div");
+          sub.className = "nested";
+          sub.innerHTML = `<strong>InventoryCargo</strong>`;
+          renderLoadout(item.InventoryCargo, sub);
+          wrapper.appendChild(sub);
+        }
+
+        if (item.Sets && Array.isArray(item.Sets)) {
+          const sub = document.createElement("div");
+          sub.className = "nested";
+          sub.innerHTML = `<strong>Sets</strong>`;
+          renderLoadout(item.Sets, sub);
+          wrapper.appendChild(sub);
+        }
+
+        container.appendChild(wrapper);
+      });
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(loadout, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename || "BanditLoadout.json";
+      a.click();
+    }
+  </script>
+</body>
+</html>

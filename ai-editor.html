@@ -1,0 +1,161 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Editor</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+
+body {
+  background: url('logo.jpg') no-repeat center center fixed;
+  background-size: cover;
+  background-blend-mode: multiply;
+  background-color: #0a0a0a;
+}
+
+    .entry { background:#1e1e1e; border:1px solid #333; padding:10px; margin-bottom:10px; border-radius:8px; }
+    .entry h3 { margin-top:0; }
+    .field-group { margin-bottom: 10px; }
+    .field-group label { display:block; font-weight:bold; margin-bottom: 3px; }
+    select, input, textarea { width: 100%; }
+  </style>
+</head>
+<body>
+  <h1>AI Settings Editor</h1>
+  <div style="text-align:right;margin-bottom:10px;"><a href="index.html" class="home-button">⬅ Back to Home</a></div>
+<div class="editor-section">
+    <input type="file" id="aiInput" accept=".json">
+    <button onclick="downloadJSON()">Download Edited JSON</button>
+    <div id="aiEditorContent"></div>
+  </div>
+
+  <script>
+    let aiData = null;
+    let filename = "";
+
+    document.getElementById("aiInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      filename = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          aiData = JSON.parse(e.target.result);
+          renderEditor();
+        } catch (err) {
+          alert("Invalid JSON format");
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function renderEditor() {
+      const container = document.getElementById("aiEditorContent");
+      container.innerHTML = "";
+
+      if (filename.includes("AISettings")) {
+        renderAISettings(container);
+      } else if (filename.includes("AIPatrolSettings")) {
+        renderAIPatrolSettings(container);
+      } else if (filename.includes("AILocationSettings")) {
+        renderAILocationSettings(container);
+      } else {
+        container.innerHTML = "<p style='color:red;'>Unsupported file type</p>";
+      }
+    }
+
+    function renderAISettings(container) {
+      for (const [key, value] of Object.entries(aiData)) {
+        if (typeof value === "object") continue;
+        const field = document.createElement("div");
+        field.className = "field-group";
+        field.innerHTML = `
+          <label>${key}</label>
+          <input type="text" value="${value}" onchange="aiData['${key}'] = this.value">
+        `;
+        container.appendChild(field);
+      }
+    }
+
+    function renderAIPatrolSettings(container) {
+      ["Patrols", "ObjectPatrols"].forEach(section => {
+        if (!aiData[section]) return;
+        const title = document.createElement("h2");
+        title.textContent = section;
+        container.appendChild(title);
+
+        aiData[section].forEach((patrol, i) => {
+          const div = document.createElement("div");
+          div.className = "entry";
+          div.innerHTML = `
+            <h3>${section} ${i + 1}</h3>
+            <div class="field-group">
+              <label>Faction</label>
+              <input type="text" value="${patrol.Faction || ''}" onchange="aiData['${section}'][${i}]['Faction'] = this.value">
+            </div>
+            <div class="field-group">
+              <label>Loadout</label>
+              <input type="text" value="${patrol.Loadout || ''}" onchange="aiData['${section}'][${i}]['Loadout'] = this.value">
+            </div>
+            <div class="field-group">
+              <label>NumberOfAI</label>
+              <input type="number" value="${patrol.NumberOfAI}" onchange="aiData['${section}'][${i}]['NumberOfAI'] = parseInt(this.value)">
+            </div>
+            <div class="field-group">
+              <label>Speed</label>
+              <select onchange="aiData['${section}'][${i}]['Speed'] = this.value">
+                <option ${patrol.Speed === 'WALK' ? 'selected' : ''}>WALK</option>
+                <option ${patrol.Speed === 'JOG' ? 'selected' : ''}>JOG</option>
+                <option ${patrol.Speed === 'SPRINT' ? 'selected' : ''}>SPRINT</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label>ClassName</label>
+              <input type="text" value="${patrol.ClassName || ''}" onchange="aiData['${section}'][${i}]['ClassName'] = this.value">
+            </div>
+          `;
+          container.appendChild(div);
+        });
+      });
+    }
+
+    function renderAILocationSettings(container) {
+      if (!aiData.RoamingLocations) return;
+      const title = document.createElement("h2");
+      title.textContent = "RoamingLocations";
+      container.appendChild(title);
+
+      aiData.RoamingLocations.forEach((loc, i) => {
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML = `
+          <h3>Location ${i + 1}</h3>
+          <div class="field-group">
+            <label>Faction</label>
+            <input type="text" value="${loc.Faction || ''}" onchange="aiData['RoamingLocations'][${i}]['Faction'] = this.value">
+          </div>
+          <div class="field-group">
+            <label>Chance</label>
+            <input type="number" value="${loc.Chance}" onchange="aiData['RoamingLocations'][${i}]['Chance'] = parseFloat(this.value)">
+          </div>
+          <div class="field-group">
+            <label>NumberOfAI</label>
+            <input type="number" value="${loc.NumberOfAI}" onchange="aiData['RoamingLocations'][${i}]['NumberOfAI'] = parseInt(this.value)">
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(aiData, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+    }
+  </script>
+</body>
+</html>

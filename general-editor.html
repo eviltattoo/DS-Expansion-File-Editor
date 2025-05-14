@@ -1,0 +1,124 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>General Settings Editor</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+
+body {
+  background: url('logo.jpg') no-repeat center center fixed;
+  background-size: cover;
+  background-blend-mode: multiply;
+  background-color: #0a0a0a;
+}
+
+    .field-group { margin-bottom: 12px; }
+    .field-group label { display: block; font-weight: bold; margin-bottom: 4px; }
+    .entry { background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px #000; margin-bottom: 20px; }
+    textarea { width: 100%; min-height: 60px; }
+  </style>
+</head>
+<body>
+  <h1>General Settings Editor</h1>
+  <div style="text-align:right;margin-bottom:10px;"><a href="index.html" class="home-button">⬅ Back to Home</a></div>
+<div class="editor-section">
+    <input type="file" id="fileInput" accept=".json" />
+    <button onclick="downloadJSON()">Download Edited JSON</button>
+    <div id="settingsContainer"></div>
+  </div>
+
+  <script>
+    let config = {};
+    let filename = "";
+
+    document.getElementById("fileInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      filename = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          config = JSON.parse(e.target.result);
+          renderForm();
+        } catch (err) {
+          alert("Invalid JSON format");
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function renderForm() {
+      const container = document.getElementById("settingsContainer");
+      container.innerHTML = "<h2>General Settings</h2>";
+
+      for (const [key, value] of Object.entries(config)) {
+        const group = document.createElement("div");
+        group.className = "field-group";
+
+        if (typeof value === "boolean" || value === 0 || value === 1) {
+          const checked = value === true || value === 1 ? "checked" : "";
+          group.innerHTML = `
+            <label>${key}</label>
+            <input type="checkbox" ${checked} onchange="config['${key}'] = this.checked ? 1 : 0">
+          `;
+        } else if (typeof value === "number") {
+          group.innerHTML = `
+            <label>${key}</label>
+            <input type="number" value="${value}" onchange="config['${key}'] = parseFloat(this.value)">
+          `;
+        } else if (typeof value === "string") {
+          group.innerHTML = `
+            <label>${key}</label>
+            <input type="text" value="${value}" onchange="config['${key}'] = this.value">
+          `;
+        } else if (typeof value === "object") {
+          if (key === "HUDColors") {
+            group.innerHTML = `<label>${key}</label>`;
+            for (const [colorKey, colorValue] of Object.entries(value)) {
+              group.innerHTML += `
+                <div style="margin-bottom:6px;">
+                  <label style="font-weight:normal;">${colorKey}</label>
+                  <input type="text" value="${colorValue}" onchange="config['HUDColors']['${colorKey}'] = this.value">
+                </div>
+              `;
+            }
+          } else if (key === "Mapping") {
+            group.innerHTML = `<label>${key}</label>`;
+            for (const [subKey, subValue] of Object.entries(value)) {
+              if (Array.isArray(subValue)) {
+                group.innerHTML += `
+                  <label style="font-weight:normal;">${subKey}</label>
+                  <textarea onchange="updateMappingArray('${subKey}', this.value)">${subValue.join("\n")}</textarea>
+                `;
+              } else {
+                const checked = subValue === 1 ? "checked" : "";
+                group.innerHTML += `
+                  <label style="font-weight:normal;">${subKey}</label>
+                  <input type="checkbox" ${checked} onchange="config['Mapping']['${subKey}'] = this.checked ? 1 : 0">
+                `;
+              }
+            }
+          }
+        }
+
+        container.appendChild(group);
+      }
+    }
+
+    function updateMappingArray(key, value) {
+      config.Mapping[key] = value.split("\n").map(line => line.trim()).filter(line => line);
+    }
+
+    function downloadJSON() {
+      const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename || "GeneralSettings.json";
+      a.click();
+    }
+  </script>
+</body>
+</html>

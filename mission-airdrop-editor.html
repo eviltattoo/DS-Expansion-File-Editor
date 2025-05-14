@@ -1,0 +1,163 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<title>Airdrop &amp; Mission Editor</title>
+<link href="style.css" rel="stylesheet"/>
+<style>
+body {
+  background: url('logo.jpg') no-repeat center center fixed;
+  background-size: cover;
+  background-blend-mode: multiply;
+  background-color: #0a0a0a;
+}
+.field-group { margin-bottom: 12px; }
+.field-group label { display: block; font-weight: bold; margin-bottom: 4px; }
+.entry { background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px #000; margin-bottom: 30px; }
+.half { width: 48%; display: inline-block; vertical-align: top; margin-right: 2%; }
+.half:last-child { margin-right: 0; }
+textarea { width: 100%; min-height: 60px; }
+</style>
+</head>
+<body>
+<h1>Airdrop &amp; Mission Editor</h1>
+<div style="text-align:right;margin-bottom:10px;"><a class="home-button" href="index.html">⬅ Back to Home</a></div><div class="editor-section">
+<div class="half">
+<h2>Airdrop Settings</h2>
+<input accept=".json" id="airdropInput" type="file"/>
+<button onclick="downloadJSON('airdrop')">Download Airdrop JSON</button>
+<div class="entry" id="airdropContainer"></div>
+</div>
+<div class="half">
+<h2>Mission File</h2>
+<input accept=".json" id="missionInput" type="file"/>
+<button onclick="downloadJSON('mission')">Download Mission JSON</button>
+<div class="entry" id="missionContainer"></div>
+</div>
+</div>
+<script>
+let airdropConfig = {};
+let missionConfig = {};
+let airdropFileName = "";
+let missionFileName = "";
+
+const fieldTypes = (value) => {
+  if (typeof value === "boolean") return "checkbox";
+  if (typeof value === "number") return "number";
+  return "text";
+};
+
+document.getElementById("airdropInput").addEventListener("change", function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  airdropFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      airdropConfig = JSON.parse(e.target.result);
+      renderRecursive(airdropConfig, document.getElementById("airdropContainer"), []);
+    } catch (err) {
+      alert("Invalid Airdrop JSON");
+    }
+  };
+  reader.readAsText(file);
+});
+
+document.getElementById("missionInput").addEventListener("change", function(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  missionFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      missionConfig = JSON.parse(e.target.result);
+      renderRecursive(missionConfig, document.getElementById("missionContainer"), []);
+    } catch (err) {
+      alert("Invalid Mission JSON");
+    }
+  };
+  reader.readAsText(file);
+});
+
+function renderRecursive(obj, parent, path) {
+  if (typeof obj !== "object" || obj === null) return;
+
+  for (const key in obj) {
+    const val = obj[key];
+    const newPath = path.concat(key);
+
+    const group = document.createElement("div");
+    group.className = "field-group";
+
+    const label = document.createElement("label");
+    label.textContent = key;
+
+    if (Array.isArray(val)) {
+      const nestedGroup = document.createElement("div");
+      nestedGroup.className = "nested";
+      const title = document.createElement("strong");
+      title.textContent = key;
+      nestedGroup.appendChild(title);
+
+      val.forEach((item, idx) => {
+        const itemPath = newPath.concat(idx);
+        if (typeof item === "object" && item !== null) {
+          const sub = document.createElement("div");
+          sub.className = "nested";
+          renderRecursive(item, sub, itemPath);
+          nestedGroup.appendChild(sub);
+        } else {
+          const input = document.createElement("input");
+          input.type = fieldTypes(item);
+          input.value = item;
+          input.onchange = () => setDeepValue(itemPath, input.type === "number" ? parseFloat(input.value) : input.value);
+          nestedGroup.appendChild(input);
+        }
+      });
+
+      group.appendChild(nestedGroup);
+    } else if (typeof val === "object" && val !== null) {
+      const nested = document.createElement("div");
+      nested.className = "nested";
+      const title = document.createElement("strong");
+      title.textContent = key;
+      nested.appendChild(title);
+      renderRecursive(val, nested, newPath);
+      group.appendChild(nested);
+    } else {
+      const input = document.createElement("input");
+      input.type = fieldTypes(val);
+      if (input.type === "checkbox") {
+        input.checked = val;
+        input.onchange = () => setDeepValue(newPath, input.checked);
+      } else {
+        input.value = val;
+        input.onchange = () => setDeepValue(newPath, input.type === "number" ? parseFloat(input.value) : input.value);
+      }
+      group.appendChild(label);
+      group.appendChild(input);
+    }
+
+    parent.appendChild(group);
+  }
+}
+
+function setDeepValue(path, value) {
+  let target = path[0].includes("airdrop") ? airdropConfig : missionConfig;
+  for (let i = 0; i < path.length - 1; i++) target = target[path[i]];
+  target[path[path.length - 1]] = value;
+}
+
+function downloadJSON(type) {
+  const data = type === "airdrop" ? airdropConfig : missionConfig;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = type === "airdrop" ? (airdropFileName || "AirdropSettings.json") : (missionFileName || "Mission.json");
+  a.click();
+}
+</script>
+</body>
+</html>

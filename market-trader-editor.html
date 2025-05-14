@@ -1,0 +1,189 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Market & Trader Editor</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+
+body {
+  background: url('logo.jpg') no-repeat center center fixed;
+  background-size: cover;
+  background-blend-mode: multiply;
+  background-color: #0a0a0a;
+}
+
+    .half { width: 48%; display: inline-block; vertical-align: top; margin-right: 2%; }
+    .half:last-child { margin-right: 0; }
+    .field-group { margin-bottom: 10px; }
+    .field-group label { display: block; font-weight: bold; margin-bottom: 4px; }
+    .entry, .nested { background: #1e1e1e; padding: 12px; margin-bottom: 20px; border-radius: 6px; }
+    .nested { background: #2a2a2a; margin-left: 10px; }
+    textarea { width: 100%; min-height: 60px; }
+  </style>
+</head>
+<body>
+  <h1>Market & Trader Editor</h1>
+  <div style="text-align:right;margin-bottom:10px;"><a href="index.html" class="home-button">⬅ Back to Home</a></div>
+<div class="editor-section">
+    <div class="half">
+      <h2>Market Category</h2>
+      <input type="file" id="marketInput" accept=".json" />
+      <button onclick="downloadJSON('market')">Download Market JSON</button>
+      <div id="marketContainer" class="entry"></div>
+    </div>
+    <div class="half">
+      <h2>Trader Settings</h2>
+      <input type="file" id="traderInput" accept=".json" />
+      <button onclick="downloadJSON('trader')">Download Trader JSON</button>
+      <div id="traderContainer" class="entry"></div>
+    </div>
+  </div>
+
+  <script>
+    let marketConfig = {};
+    let traderConfig = {};
+    let marketFileName = "";
+    let traderFileName = "";
+
+    document.getElementById("marketInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      marketFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          marketConfig = JSON.parse(e.target.result);
+          renderMarket(marketConfig);
+        } catch (err) {
+          alert("Invalid Market JSON");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById("traderInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      traderFileName = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          traderConfig = JSON.parse(e.target.result);
+          renderTrader(traderConfig);
+        } catch (err) {
+          alert("Invalid Trader JSON");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function renderMarket(obj) {
+      const container = document.getElementById("marketContainer");
+      container.innerHTML = "";
+
+      const topFields = ["DisplayName", "Icon", "Color", "IsExchange", "InitStockPercent"];
+      topFields.forEach(key => {
+        if (!(key in obj)) return;
+        const group = document.createElement("div");
+        group.className = "field-group";
+
+        const label = document.createElement("label");
+        label.textContent = key;
+
+        const input = document.createElement("input");
+        input.type = typeof obj[key] === "number" ? "number" : "text";
+        input.value = obj[key];
+        input.onchange = () => { obj[key] = input.type === "number" ? parseFloat(input.value) : input.value; };
+
+        group.appendChild(label);
+        group.appendChild(input);
+        container.appendChild(group);
+      });
+
+      if (Array.isArray(obj.Items)) {
+        obj.Items.forEach((item, index) => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "nested";
+          wrapper.innerHTML = "<strong>Item " + (index + 1) + ": " + item.ClassName + "</strong>";
+
+          const editableKeys = ["ClassName", "MaxPriceThreshold", "MinPriceThreshold", "SellPricePercent", "MaxStockThreshold", "MinStockThreshold", "QuantityPercent"];
+          editableKeys.forEach(k => {
+            const g = document.createElement("div");
+            g.className = "field-group";
+            const l = document.createElement("label");
+            l.textContent = k;
+            const i = document.createElement("input");
+            i.type = typeof item[k] === "number" ? "number" : "text";
+            i.value = item[k];
+            i.onchange = () => { item[k] = i.type === "number" ? parseFloat(i.value) : i.value; };
+            g.appendChild(l); g.appendChild(i);
+            wrapper.appendChild(g);
+          });
+
+          container.appendChild(wrapper);
+        });
+      }
+    }
+
+    function renderTrader(obj) {
+      const container = document.getElementById("traderContainer");
+      container.innerHTML = "";
+
+      const editableFields = ["DisplayName", "MinRequiredReputation", "MaxRequiredReputation", "RequiredFaction", "RequiredCompletedQuestID", "TraderIcon", "DisplayCurrencyValue", "DisplayCurrencyName"];
+      editableFields.forEach(key => {
+        if (!(key in obj)) return;
+        const group = document.createElement("div");
+        group.className = "field-group";
+
+        const label = document.createElement("label");
+        label.textContent = key;
+
+        const input = document.createElement("input");
+        input.type = typeof obj[key] === "number" ? "number" : "text";
+        input.value = obj[key];
+        input.onchange = () => { obj[key] = input.type === "number" ? parseFloat(input.value) : input.value; };
+
+        group.appendChild(label);
+        group.appendChild(input);
+        container.appendChild(group);
+      });
+
+      if (Array.isArray(obj.Categories)) {
+        const catGroup = document.createElement("div");
+        catGroup.className = "field-group";
+        catGroup.innerHTML = "<label>Categories (newline-separated)</label>";
+        const ta = document.createElement("textarea");
+        ta.value = obj.Categories.join("\n");
+        ta.onchange = () => {
+          obj.Categories = ta.value.split("\n").map(l => l.trim()).filter(Boolean);
+        };
+        catGroup.appendChild(ta);
+        container.appendChild(catGroup);
+      }
+
+      if (Array.isArray(obj.Currencies)) {
+        const curGroup = document.createElement("div");
+        curGroup.className = "field-group";
+        curGroup.innerHTML = "<label>Currencies (newline-separated)</label>";
+        const ta = document.createElement("textarea");
+        ta.value = obj.Currencies.join("\n");
+        ta.onchange = () => {
+          obj.Currencies = ta.value.split("\n").map(l => l.trim()).filter(Boolean);
+        };
+        curGroup.appendChild(ta);
+        container.appendChild(curGroup);
+      }
+    }
+
+    function downloadJSON(type) {
+      const blob = new Blob([JSON.stringify(type === "market" ? marketConfig : traderConfig, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = type === "market" ? marketFileName || "Market.json" : traderFileName || "Trader.json";
+      a.click();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Communication Settings Editor</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+
+body {
+  background: url('logo.jpg') no-repeat center center fixed;
+  background-size: cover;
+  background-blend-mode: multiply;
+  background-color: #0a0a0a;
+}
+
+    .field-group { margin-bottom: 12px; }
+    .field-group label { display: block; font-weight: bold; margin-bottom: 4px; }
+    .entry { background: #1e1e1e; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px #000; margin-bottom: 30px; }
+    .half { width: 48%; display: inline-block; vertical-align: top; margin-right: 2%; }
+    .half:last-child { margin-right: 0; }
+    textarea { width: 100%; min-height: 60px; }
+  </style>
+</head>
+<body>
+  <h1>Notification & Chat Settings Editor</h1>
+  <div style="text-align:right;margin-bottom:10px;"><a href="index.html" class="home-button">⬅ Back to Home</a></div>
+<div class="editor-section">
+    <div class="half">
+      <h2>Notification Settings</h2>
+      <input type="file" id="notifInput" accept=".json">
+      <button onclick="downloadJSON('notif')">Download Notification JSON</button>
+      <div id="notifContainer" class="entry"></div>
+    </div>
+    <div class="half">
+      <h2>Chat Settings</h2>
+      <input type="file" id="chatInput" accept=".json">
+      <button onclick="downloadJSON('chat')">Download Chat JSON</button>
+      <div id="chatContainer" class="entry"></div>
+    </div>
+  </div>
+
+  <script>
+    let notifConfig = {};
+    let chatConfig = {};
+    let notifFilename = "";
+    let chatFilename = "";
+
+    document.getElementById("notifInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      notifFilename = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          notifConfig = JSON.parse(e.target.result);
+          renderConfig(notifConfig, document.getElementById("notifContainer"), "notifConfig");
+        } catch (err) {
+          alert("Invalid Notification JSON");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    document.getElementById("chatInput").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      chatFilename = file.name;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          chatConfig = JSON.parse(e.target.result);
+          renderChat(chatConfig);
+        } catch (err) {
+          alert("Invalid Chat JSON");
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    function renderConfig(obj, container, rootName) {
+      container.innerHTML = "";
+      for (const [key, value] of Object.entries(obj)) {
+        const field = document.createElement("div");
+        field.className = "field-group";
+
+        if (typeof value === "boolean" || value === 0 || value === 1) {
+          const checked = value === true || value === 1 ? "checked" : "";
+          field.innerHTML = `
+            <label>${key}</label>
+            <input type="checkbox" ${checked} onchange="${rootName}['${key}'] = this.checked ? 1 : 0">
+          `;
+        } else if (typeof value === "number") {
+          field.innerHTML = `
+            <label>${key}</label>
+            <input type="number" value="${value}" onchange="${rootName}['${key}'] = parseFloat(this.value)">
+          `;
+        } else if (typeof value === "string") {
+          field.innerHTML = `
+            <label>${key}</label>
+            <input type="text" value="${value}" onchange="${rootName}['${key}'] = this.value">
+          `;
+        }
+        container.appendChild(field);
+      }
+    }
+
+    function renderChat(obj) {
+      const container = document.getElementById("chatContainer");
+      container.innerHTML = "";
+
+      for (const [key, value] of Object.entries(obj)) {
+        const group = document.createElement("div");
+        group.className = "field-group";
+
+        if (typeof value === "boolean" || value === 0 || value === 1) {
+          const checked = value === true || value === 1 ? "checked" : "";
+          group.innerHTML = `
+            <label>${key}</label>
+            <input type="checkbox" ${checked} onchange="chatConfig['${key}'] = this.checked ? 1 : 0">
+          `;
+        } else if (typeof value === "number") {
+          group.innerHTML = `
+            <label>${key}</label>
+            <input type="number" value="${value}" onchange="chatConfig['${key}'] = parseFloat(this.value)">
+          `;
+        } else if (typeof value === "string") {
+          group.innerHTML = `
+            <label>${key}</label>
+            <input type="text" value="${value}" onchange="chatConfig['${key}'] = this.value">
+          `;
+        } else if (typeof value === "object" && key === "ChatColors") {
+          group.innerHTML = `<label>${key}</label>`;
+          for (const [colorKey, colorValue] of Object.entries(value)) {
+            group.innerHTML += `
+              <div style="margin-bottom:6px;">
+                <label style="font-weight:normal;">${colorKey}</label>
+                <input type="text" value="${colorValue}" onchange="chatConfig['ChatColors']['${colorKey}'] = this.value">
+              </div>
+            `;
+          }
+        } else if (Array.isArray(value) && key === "BlacklistedWords") {
+          group.innerHTML = `
+            <label>${key}</label>
+            <textarea onchange="updateBlacklist(this.value)">${value.join("\n")}</textarea>
+          `;
+        }
+
+        container.appendChild(group);
+      }
+    }
+
+    function updateBlacklist(value) {
+      chatConfig.BlacklistedWords = value.split("\n").map(line => line.trim()).filter(line => line);
+    }
+
+    function downloadJSON(type) {
+      const obj = type === "notif" ? notifConfig : chatConfig;
+      const fname = type === "notif" ? notifFilename : chatFilename;
+      const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fname || (type === "notif" ? "NotificationSettings.json" : "ChatSettings.json");
+      a.click();
+    }
+  </script>
+</body>
+</html>
